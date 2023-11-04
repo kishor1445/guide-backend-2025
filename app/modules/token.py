@@ -2,6 +2,7 @@ import os
 import jwt
 from flask import request
 from functools import wraps
+from app import app
 
 
 def check_token(f):
@@ -13,7 +14,7 @@ def check_token(f):
         token = token.replace("Bearer ", "")
         print(token)
         try:
-            data = jwt.decode(token, os.getenv("SECRET_KEY"), algorithms=["HS256"])
+            data = jwt.decode(token, app.config["SECRET_KEY"], algorithms=["HS256"])
         except BaseException as e:
             print(e)
             return {"message": "Token is invalid"}, 403
