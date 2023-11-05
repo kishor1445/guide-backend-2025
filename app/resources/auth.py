@@ -24,6 +24,8 @@ login_post_args_list = (
 )
 login_post_args = parse_arg(login_post_args_list)
 verify_post_args_list = (
+    ("email", str),
+    ("password", str),
     ("v_code", str),
 )
 verify_post_args = parse_arg(verify_post_args_list)
@@ -37,8 +39,11 @@ class Login(Resource):
         args = login_post_args.parse_args()
         user = self.users.find(args["email"])
         if user and bcrypt.check_password_hash(user["password"], args["password"]):
-            access_token = create_access_token(identity=args['email'])
-            return jsonify({"access_token": access_token})
+            if user["verified"]:
+                access_token = create_access_token(identity=args['email'])
+                return jsonify({"access_token": access_token})
+            else:
+                abort(403, message="Account Verification Required")
 
         return make_response(jsonify({"message": "Invalid Credentials"}), 400)
 
@@ -74,7 +79,6 @@ class Register(Resource):
         verification_code = secrets.token_urlsafe(5)
         msg = Message('Verification Code', sender=app.config['MAIL_USERNAME'], recipients=[args['email']])
         msg.body = f'Your verification code is: {verification_code}'
-        print("Verification Code Generated:", verification_code)
         try:
             mail.send(msg)
         except Exception as e:
@@ -88,17 +92,21 @@ class Verify(Resource):
     def __init__(self):
         self.users = Users()
 
-    @jwt_required()
     def post(self):
         args = verify_post_args.parse_args()
-        user_email = get_jwt_identity()
-        user = self.users.find(user_email)
-        if args["v_code"] == user["verification_code"]:
-            if datetime.utcnow() < user["verification_code_exp"]:
-                self.users.verified(user_email)
-                return jsonify({"message": "Successfully Verified"})
+        user = self.users.find(args["email"])
+
+        if user and bcrypt.check_password_hash(user["password"], args["password"]):
+            if user['verified']:
+                abort(403, message="Account Already Verified")
+            if args["v_code"] == user["verification_code"]:
+                if datetime.utcnow() < user["verification_code_exp"]:
+                    self.users.verified(args["email"])
+                    return jsonify({"message": "Successfully Verified"})
+                else:
+                    abort(403, message="Verification Code Expired")
             else:
-                abort(403, message="Verification Code Expired")
+                abort(403, message="Invalid Verification Code")
         else:
-            abort(403, message="Invalid Verification Code")
+            abort(403, message="Invalid Credentials")
 
