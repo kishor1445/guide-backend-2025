@@ -1,12 +1,13 @@
 from flask import Blueprint
 from flask_restful import Api
-from .resources.auth import Login, Register
+from .resources.auth import Login, Register, Verify
 
 api_bp = Blueprint('api', __name__)
 api = Api(api_bp)
 
 api.add_resource(Login, '/login')
 api.add_resource(Register, '/register')
+api.add_resource(Verify, '/verify')
 
 
 def create_app():
