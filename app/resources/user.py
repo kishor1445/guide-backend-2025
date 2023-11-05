@@ -11,7 +11,7 @@ class GetUser(Resource):
     @jwt_required()
     def get(self):
         user_email = get_jwt_identity()
-        user = self.users.find(user_email)
+        user = self.users.find_by_email(user_email)
         return jsonify({
             "email": user["email"],
             "first_name": user["first_name"],
