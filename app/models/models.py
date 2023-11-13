@@ -7,7 +7,7 @@ class Students(UserDB):
     def __init__(self):
         super().__init__("students")
 
-    def add(self, args, hash_pass, v_code, v_code_exp):
+    def add(self, args, image_url, hash_pass, v_code, v_code_exp):
         self.collection.insert_one(
             {
                 "email": args["email"],
@@ -25,10 +25,13 @@ class Guides(UserDB):
     def __init__(self):
         super().__init__("guides")
 
-    def add(self, args, hash_pass, v_code, v_code_exp):
+    def add(self, args, img_url, hash_pass, v_code, v_code_exp):
+        if self.collection.find_one({"serial_no": args["serial_no"]}):
+            raise ValueError("serial_no already exists")
         self.collection.insert_one(
             {
-                "name": args["name"],
+                "first_name": args["first_name"],
+                "last_name": args["last_name"],
                 "emp_id": args["emp_id"],
                 "serial_no": args["serial_no"],
                 "designation": args["designation"],

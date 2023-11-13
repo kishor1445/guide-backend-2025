@@ -1,3 +1,4 @@
+import os
 import secrets
 import time
 from datetime import datetime, timedelta
@@ -9,30 +10,32 @@ from app.models.models import Students, Guides
 from app.modules.parser import parse_arg
 from app import bcrypt, mail, app
 from werkzeug.datastructures.file_storage import FileStorage
+from app.modules.secure import allowed_image_file
 
-guide_req = parse_arg((("guide", bool, True, []),))
+guide_req = parse_arg((("guide", bool, True, ['form']),))
 reg_post_args_list = (
-    ("first_name", str, True, []),
-    ("last_name", str, True, []),
-    ("email", str, True, []),
-    ("password", str, True, []),
-    ("confirm_password", str, True, []),
-    ("guide", bool, True, []),
+    ("first_name", str, True, ['form']),
+    ("last_name", str, True, ['form']),
+    ("email", str, True, ['form']),
+    ("password", str, True, ['form']),
+    ("confirm_password", str, True, ['form']),
 )
 register_post_args = parse_arg(reg_post_args_list)
 guide_reg_post_args_list = (
-    ("first_name", str, True, []),
-    ("last_name", str, True, []),
-    ("emp_id", str, True, []),
-    ("serial_no", str, True, []),
-    ("designation", str, True, []),
-    ("domain_1", str, True, []),
-    ("domain_2", str, True, []),
-    ("domain_3", str, True, []),
-    ("email", str, True, []),
-    ("my_image", FileStorage, True, ["file"]),
+    ("first_name", str, True, ['form']),
+    ("last_name", str, True, ['form']),
+    ("emp_id", int, True, ['form']),
+    ("serial_no", int, True, ['form']),
+    ("designation", str, True, ['form']),
+    ("domain_1", str, True, ['form']),
+    ("domain_2", str, True, ['form']),
+    ("domain_3", str, True, ['form']),
+    ("email", str, True, ['form']),
+    ("password", str, True, ['form']),
+    ("confirm_password", str, True, ['form'])
 )
 guide_reg_post_args = parse_arg(guide_reg_post_args_list)
+guide_img_args = parse_arg((('image', FileStorage, True, ["files"]),))
 login_post_args_list = (
     ("email", str, True, []),
     ("password", str, True, []),
@@ -86,9 +89,13 @@ class Register(Resource):
 
     def post(self):
         is_guide = guide_req.parse_args()["guide"]
+        guide_img = None
         if is_guide:
             args = guide_reg_post_args.parse_args()
             self.current = self.guides
+            guide_img = guide_img_args.parse_args()['image']
+            if guide_img.filename == '':
+                abort(400, message="image cannot be None")
         else:
             args = register_post_args.parse_args()
             self.current = self.students
@@ -110,7 +117,10 @@ class Register(Resource):
 
         # Checks for existing user account
         if is_guide:
-            acc = self.guides.find_by_email(args["email"])
+            try:
+                acc = self.guides.find_by_email(args["email"])
+            except ValueError as e:
+                abort(400, message=e)
         else:
             acc = self.students.find_by_email(args["email"])
         if acc:
@@ -126,11 +136,24 @@ class Register(Resource):
         msg.body = f"Your verification code is: {verification_code}\nThis code is valid for only 30 minutes"
         try:
             mail.send(msg)
+            pass
         except Exception as e:
             print(e)
             abort(500, message="An Error Occurred")
+        if is_guide:
+            allowed, ext = allowed_image_file(guide_img.filename, _return='ext')
+            if allowed:
+                filename = f"{args['emp_id']}.{ext}"
+                args["image_file"] = filename
+                guide_img.save(os.path.join(app.config["GUIDE_AVATAR_UPLOAD"], filename))
+            else:
+                abort(400, message=f"{ext} file type is not allowed")
+            image_url = filename
+        else:
+            image_url = None
         self.current.add(
                 args,
+                image_url,
                 h_pass,
                 verification_code,
                 datetime.utcnow() + timedelta(minutes=30),

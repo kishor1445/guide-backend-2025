@@ -10,6 +10,8 @@ load_dotenv()
 app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://localhost:27017/guide_selection"
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
+app.config["GUIDE_AVATAR_UPLOAD"] = "uploads/guide/avatar"
 
 # mail
 app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
@@ -23,3 +25,6 @@ mongo = PyMongo(app)
 mail = Mail(app)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
+
+if 'uploads' not in os.listdir():
+    os.makedirs("uploads/guide/avatar")
