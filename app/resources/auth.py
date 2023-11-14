@@ -14,6 +14,7 @@ from app.modules.secure import allowed_image_file
 
 guide_req = parse_arg((("guide", bool, True, ['form']),))
 reg_post_args_list = (
+    ("reg_no", str, True, ['form']),
     ("first_name", str, True, ['form']),
     ("last_name", str, True, ['form']),
     ("email", str, True, ['form']),
@@ -117,10 +118,14 @@ class Register(Resource):
 
         # Checks for existing user account
         if is_guide:
-            try:
-                acc = self.guides.find_by_email(args["email"])
-            except ValueError as e:
-                abort(400, message=e)
+            acc = self.guides.find_by_email(args["email"])
+            serial_no = self.guides.find({"serial_no": args["serial_no"]})
+            emp_id = self.guides.find({"emp_id": args["emp_id"]})
+            if serial_no:
+                abort(400, message="Serial number already exists")
+            if emp_id:
+                abort(400, message="Employee ID already exists")
+
         else:
             acc = self.students.find_by_email(args["email"])
         if acc:
@@ -143,7 +148,7 @@ class Register(Resource):
         if is_guide:
             allowed, ext = allowed_image_file(guide_img.filename, _return='ext')
             if allowed:
-                filename = f"{args['emp_id']}.{ext}"
+                filename = f"{secrets.token_urlsafe(8)}.{ext}"
                 args["image_file"] = filename
                 guide_img.save(os.path.join(app.config["GUIDE_AVATAR_UPLOAD"], filename))
             else:
