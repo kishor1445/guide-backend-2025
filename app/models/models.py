@@ -1,5 +1,4 @@
 from .helper import UserDB
-from gridfs import GridFS
 from app import mongo
 
 
@@ -10,6 +9,7 @@ class Students(UserDB):
     def add(self, args, image_url, hash_pass, v_code, v_code_exp):
         self.collection.insert_one(
             {
+                "reg_no": args["reg_no"],
                 "email": args["email"],
                 "first_name": args["first_name"],
                 "last_name": args["last_name"],
@@ -39,6 +39,7 @@ class Guides(UserDB):
                 "domain_2": args.get("domain_2", None),
                 "domain_3": args.get("domain_3", None),
                 "email": args["email"],
+                "avatar_filename": img_url,
                 "password": hash_pass,
                 "verified": False,
                 "verification_code": v_code,
@@ -50,7 +51,6 @@ class Guides(UserDB):
 class Team(UserDB):
     def __init__(self):
         super().__init__("team")
-        self.fs = GridFS(mongo.db, "team")
 
     def add(self, args):
         if args.get("no_of_members", None) is None:
@@ -70,7 +70,7 @@ class Team(UserDB):
             raise ValueError(
                 f"type value should be Application Based or Product Based. But got {args['type']}"
             )
-        return self.collection.insert_one(
+        self.collection.insert_one(
             {
                 "team_id": args["team_id"],
                 "project_name": args["project_name"],
@@ -87,16 +87,29 @@ class Team(UserDB):
                 "student_2_email": args["student_2_email"],
                 "student_2_no": args["student_2_no"],
                 # Files
-                # TODO: file
                 "document": {
-                    "filename": f"{args['team_id']}_document.pdf",
-                    "file_type": "pdf",
+                    "filename": args['doc_name'],
+                    "file_type": args['doc_type'],
                 },
-                "ppt": None,
-                "rs_paper": None,
-                "guide_form": None,
-                "app_video": None,
-                "product_video": None,
+                "ppt": {
+                    'filename': args['ppt_name']
+                },
+                "rs_paper": {
+                    'filename': args['rs_paper_name'],
+                    'file_type': args['rs_paper_type']
+                },
+                "guide_form": {
+                    'filename': args['guide_form_name'],
+                    'file_type': args['guide_form_type']
+                },
+                "app_video": {
+                    'filename': args['app_video_name'],
+                    'file_type': args['app_video_type']
+                },
+                "product_video": {
+                    'filename': args['product_video_name'],
+                    'file_type': args['product_video_type']
+                },
                 # Approval
                 "profile_approved": False,
                 "guide_approved": False,
@@ -114,7 +127,7 @@ class Team(UserDB):
                 "payment_done": False,
                 "type": _type,
             }
-        ).inserted_id
+        )
 
 
 class Credit(UserDB):
